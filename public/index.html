@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Reportes - Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+        }
+
+        #btnDescargar {
+            padding: 10px 20px;
+            background: #004B87;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h2>Prueba del Generador de Reportes 🚀</h2>
+    <button id="btnDescargar" type="button">Generar y Descargar Excel</button>
+
+    <script>
+        document.getElementById('btnDescargar').addEventListener('click', async () => {
+            const data = {
+                "titulo": "Reporte Financiero Mensual",
+                "mes": "Septiembre 2026",
+                "datos": [
+                    { "fecha": "01/09/2026", "concepto": "Venta de Licencia EcoFinx", "categoria": "Ingreso", "monto": 45000 },
+                    { "fecha": "05/09/2026", "concepto": "Pago Servidor AWS", "categoria": "Gasto", "monto": -3500 },
+                    { "fecha": "12/09/2026", "concepto": "Mantenimiento", "categoria": "Gasto", "monto": -1500 },
+                    { "fecha": "15/09/2026", "concepto": "Consultoría", "categoria": "Ingreso", "monto": 12000 }
+                ]
+            };
+
+            const response = await fetch('/api/generar-reporte', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'reporte-financiero.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } else {
+                alert('Error al generar el reporte');
+            }
+        });
+    </script>
+</body>
+</html>
