@@ -3,6 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 async function generarPDF(datosReporte) {
+    const english = datosReporte.idioma === 'en';
+    const labels = english
+        ? { period: 'Period', date: 'Date', concept: 'Concept', category: 'Category', amount: 'Amount', total: 'Net Total' }
+        : { period: 'Periodo', date: 'Fecha', concept: 'Concepto', category: 'Categoria', amount: 'Monto', total: 'Total neto' };
     const templatePath = path.join(__dirname, '../templates/reportTemplate.html');
     let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
 
@@ -11,7 +15,9 @@ async function generarPDF(datosReporte) {
 
     datosReporte.datos.forEach(item => {
         sumaTotal += item.monto;
-        const montoFormateado = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.monto);
+        const locale = english ? 'en-US' : 'es-DO';
+        const currency = english ? 'USD' : 'DOP';
+        const montoFormateado = new Intl.NumberFormat(locale, { style: 'currency', currency }).format(item.monto);
 
         filasHTML += `
             <tr>
@@ -23,11 +29,20 @@ async function generarPDF(datosReporte) {
         `;
     });
 
-    const totalNetoFormateado = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(sumaTotal);
+    const totalNetoFormateado = new Intl.NumberFormat(english ? 'en-US' : 'es-DO', {
+        style: 'currency',
+        currency: english ? 'USD' : 'DOP'
+    }).format(sumaTotal);
 
     htmlTemplate = htmlTemplate
         .replace('{{titulo}}', datosReporte.titulo)
         .replace('{{mes}}', datosReporte.mes)
+        .replace('{{periodo}}', labels.period)
+        .replace('{{fecha}}', labels.date)
+        .replace('{{concepto}}', labels.concept)
+        .replace('{{categoria}}', labels.category)
+        .replace('{{monto}}', labels.amount)
+        .replace('{{totalLabel}}', labels.total)
         .replace('{{filasTabla}}', filasHTML)
         .replace('{{totalNeto}}', totalNetoFormateado);
 

@@ -1,48 +1,381 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ReportFlow - Test Interface</title>
+    <title>ReportFlow</title>
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-    <h2>ReportFlow Document Generator 🚀</h2>
-    <button class="excel-button" onclick="descargar('excel')">Download Excel</button>
-    <button class="pdf-button" onclick="descargar('pdf')">Download PDF</button>
+    <div class="app-shell">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow" data-i18n="eyebrow">Generador de reportes</p>
+                <h1>ReportFlow</h1>
+            </div>
+            <div class="topbar-actions">
+                <label class="toggle-control"><span id="themeLabel" data-i18n="darkMode">Modo oscuro</span><input id="themeToggle" type="checkbox"><span class="toggle"></span></label>
+                <label class="language-control" for="languageSelect">
+                    <span class="language-icon">文</span>
+                    <span data-i18n="language">Idioma</span>
+                    <select id="languageSelect" aria-label="Idioma">
+                        <option value="es">ES</option>
+                        <option value="en">EN</option>
+                    </select>
+                </label>
+                <div class="status-pill" data-i18n="split">Split 3</div>
+            </div>
+        </header>
+
+        <main class="layout">
+            <section class="panel form-panel">
+                <h2 data-i18n="reportData">Datos del reporte</h2>
+                <div class="import-help">
+                    <strong data-i18n="fileRulesTitle">Reglas para importar archivos</strong>
+                    <span data-i18n="fileRules">Acepta .csv o .xlsx de hasta 5 MB. La primera fila debe tener: fecha, concepto, categoria y monto. Los montos deben ser números; una fila por transacción.</span>
+                </div>
+
+                <div class="field-group">
+                    <label for="titulo" data-i18n="title">Título</label>
+                    <input id="titulo" type="text" value="Reporte financiero mensual" data-i18n-placeholder="titlePlaceholder" placeholder="Ej. Informe operativo mensual">
+                </div>
+
+                <div class="field-group">
+                    <label for="mes" data-i18n="month">Mes</label>
+                    <input id="mes" type="text" value="Septiembre 2026" data-i18n-placeholder="monthPlaceholder" placeholder="Ej. Septiembre 2026">
+                </div>
+
+                <div class="field-group">
+                    <label data-i18n="outputFormat">Formato de salida</label>
+                    <div class="format-options">
+                        <label class="radio-option"><input type="radio" name="formato" value="excel" checked> <span data-i18n="excel">Excel</span></label>
+                        <label class="radio-option"><input type="radio" name="formato" value="pdf"> <span data-i18n="pdf">PDF</span></label>
+                    </div>
+                </div>
+
+                <div class="field-group">
+                    <label for="csvFile" data-i18n="importCsv">Importar CSV</label>
+                    <input id="csvFile" type="file" accept=".csv,text/csv">
+                </div>
+
+                <div class="field-group">
+                    <label for="excelFile" data-i18n="importExcel">Importar Excel (.xlsx)</label>
+                    <input id="excelFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                </div>
+
+                <div class="field-group">
+                    <label for="csvText" data-i18n="pasteCsv">Pegar CSV</label>
+                    <textarea id="csvText" rows="4" data-i18n-placeholder="csvPlaceholder" placeholder="fecha,concepto,categoria,monto&#10;01/09/2026,Venta de servicio,Income,45000"></textarea>
+                </div>
+
+                <div class="actions-row">
+                    <button type="button" class="secondary-button" id="cargarEjemplo" data-i18n="loadExample">Cargar ejemplo</button>
+                    <button type="button" class="secondary-button" id="importarCsv" data-i18n="importCsvButton">Importar CSV</button>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th data-i18n="date">Fecha</th>
+                                <th data-i18n="concept">Concepto</th>
+                                <th data-i18n="category">Categoría</th>
+                                <th data-i18n="amount">Monto</th>
+                                <th data-i18n="actions">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaDatos"></tbody>
+                    </table>
+                </div>
+
+                <div class="actions-row end">
+                    <button type="button" class="ghost-button" id="agregarFila" data-i18n="addRow">+ Agregar fila</button>
+                    <button type="button" class="primary-button" id="generarReporte" data-i18n="generateReport">Generar reporte</button>
+                </div>
+
+                <div id="mensaje" class="mensaje" aria-live="polite"></div>
+            </section>
+        </main>
+    </div>
 
     <script>
-        async function descargar(tipo) {
-            const data = {
-                "formato": tipo,
-                "titulo": "Monthly Financial Report",
-                "mes": "September 2026",
-                "datos": [
-                    { "fecha": "01/09/2026", "concepto": "EcoFinx License Sale", "categoria": "Income", "monto": 45000 },
-                    { "fecha": "05/09/2026", "concepto": "AWS Server Hosting", "categoria": "Expense", "monto": -3500 },
-                    { "fecha": "12/09/2026", "concepto": "Maintenance", "categoria": "Expense", "monto": -1500 },
-                    { "fecha": "15/09/2026", "concepto": "Consulting Services", "categoria": "Income", "monto": 12000 }
-                ]
-            };
+        const tablaDatos = document.getElementById('tablaDatos');
+        const mensaje = document.getElementById('mensaje');
 
-            const response = await fetch('/api/generar-reporte', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+        const datosEjemplo = [
+            { fecha: '01/09/2026', concepto: 'Venta de licencia', categoria: 'Income', monto: 45000 },
+            { fecha: '05/09/2026', concepto: 'Hosting AWS', categoria: 'Expense', monto: -3500 },
+            { fecha: '12/09/2026', concepto: 'Mantenimiento', categoria: 'Expense', monto: -1500 },
+            { fecha: '15/09/2026', concepto: 'Servicios de consultoría', categoria: 'Income', monto: 12000 }
+        ];
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function mostrarMensaje(texto, tipo = 'error') {
+            mensaje.textContent = texto;
+            mensaje.className = `mensaje ${tipo}`;
+        }
+
+        function nuevaFila(datos = {}) {
+            const language = document.getElementById('languageSelect').value;
+            const t = language === 'en'
+                ? { datePlaceholder: 'mm/dd/yyyy', conceptPlaceholder: 'Concept', categoryPlaceholder: 'Category', amountPlaceholder: '0.00', deleteRow: 'Delete row' }
+                : { datePlaceholder: 'dd/mm/aaaa', conceptPlaceholder: 'Concepto', categoryPlaceholder: 'Categoría', amountPlaceholder: '0.00', deleteRow: 'Eliminar fila' };
+            const fila = document.createElement('tr');
+            fila.innerHTML = `
+                <td><input type="text" value="${escapeHtml(datos.fecha || '')}" data-field="fecha" data-i18n-placeholder="datePlaceholder" placeholder="${t.datePlaceholder}"></td>
+                <td><input type="text" value="${escapeHtml(datos.concepto || '')}" data-field="concepto" data-i18n-placeholder="conceptPlaceholder" placeholder="${t.conceptPlaceholder}"></td>
+                <td><input type="text" value="${escapeHtml(datos.categoria || '')}" data-field="categoria" data-i18n-placeholder="categoryPlaceholder" placeholder="${t.categoryPlaceholder}"></td>
+                <td><input type="number" value="${Number.isFinite(Number(datos.monto)) ? Number(datos.monto) : ''}" data-field="monto" step="0.01" data-i18n-placeholder="amountPlaceholder" placeholder="${t.amountPlaceholder}"></td>
+                <td><button type="button" class="delete-row" aria-label="${t.deleteRow}" data-i18n-aria="deleteRow">✕</button></td>
+            `;
+
+            fila.querySelector('.delete-row').addEventListener('click', () => {
+                fila.remove();
             });
 
-            if (response.ok) {
+            return fila;
+        }
+
+        function cargarDatos(rows) {
+            tablaDatos.innerHTML = '';
+            rows.forEach((filaDatos) => tablaDatos.appendChild(nuevaFila(filaDatos)));
+            if (!rows.length) {
+                tablaDatos.appendChild(nuevaFila());
+            }
+        }
+
+        function applyLanguage(language) {
+            const t = translations[language];
+            document.documentElement.lang = language;
+            document.querySelectorAll('[data-i18n]').forEach((element) => {
+                element.textContent = t[element.dataset.i18n];
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
+                element.placeholder = t[element.dataset.i18nPlaceholder];
+            });
+            document.querySelectorAll('[data-i18n-aria]').forEach((element) => {
+                element.setAttribute('aria-label', t[element.dataset.i18nAria]);
+            });
+            document.getElementById('languageSelect').setAttribute('aria-label', t.language);
+            document.getElementById('themeLabel').textContent = t.darkMode;
+            document.title = t.pageTitle;
+            const titleInput = document.getElementById('titulo');
+            const monthInput = document.getElementById('mes');
+            if (language === 'en') {
+                if (titleInput.value === 'Reporte financiero mensual') titleInput.value = 'Monthly financial report';
+                if (monthInput.value === 'Septiembre 2026') monthInput.value = 'September 2026';
+            } else {
+                if (titleInput.value === 'Monthly financial report') titleInput.value = 'Reporte financiero mensual';
+                if (monthInput.value === 'September 2026') monthInput.value = 'Septiembre 2026';
+            }
+        }
+
+        function recolectarDatos() {
+            return Array.from(tablaDatos.querySelectorAll('tr')).map((fila) => {
+                const inputs = fila.querySelectorAll('input[data-field]');
+                const values = {};
+
+                inputs.forEach((input) => {
+                    values[input.dataset.field] = input.value.trim();
+                });
+
+                return {
+                    fecha: values.fecha || '',
+                    concepto: values.concepto || '',
+                    categoria: values.categoria || '',
+                    monto: Number(values.monto || 0)
+                };
+            }).filter((item) => item.fecha || item.concepto || item.categoria || item.monto !== 0);
+        }
+
+        function parseCsvText(texto) {
+            const lineas = texto.split(/\r?\n/).filter((linea) => linea.trim());
+            if (lineas.length < 2) throw new Error('El CSV debe incluir encabezados y al menos una fila de datos.');
+
+            const cabeceras = lineas[0].split(',').map((col) => col.trim().toLowerCase());
+            const indice = {
+                fecha: cabeceras.indexOf('fecha'),
+                concepto: cabeceras.indexOf('concepto'),
+                categoria: cabeceras.indexOf('categoria'),
+                monto: cabeceras.indexOf('monto')
+            };
+
+            if (Object.values(indice).some((value) => value === -1)) {
+                throw new Error('El CSV debe tener columnas llamadas fecha, concepto, categoria y monto.');
+            }
+
+            const filas = lineas.slice(1).map((linea) => {
+                const columnas = linea.split(',');
+                return {
+                    fecha: (columnas[indice.fecha] || '').trim().replace(/^"|"$/g, ''),
+                    concepto: (columnas[indice.concepto] || '').trim().replace(/^"|"$/g, ''),
+                    categoria: (columnas[indice.categoria] || '').trim().replace(/^"|"$/g, ''),
+                    monto: Number((columnas[indice.monto] || '0').trim().replace(/[^0-9.-]/g, ''))
+                };
+            }).filter((item) => item.fecha || item.concepto || item.categoria || item.monto !== 0);
+
+            if (!filas.length) throw new Error('No se encontró ninguna fila válida en el CSV.');
+            return filas;
+        }
+
+        document.getElementById('agregarFila').addEventListener('click', () => {
+            tablaDatos.appendChild(nuevaFila());
+        });
+
+        document.getElementById('cargarEjemplo').addEventListener('click', () => {
+            cargarDatos(datosEjemplo);
+            mostrarMensaje(translations[document.getElementById('languageSelect').value].messages.example, 'success');
+        });
+
+        document.getElementById('importarCsv').addEventListener('click', async () => {
+            const texto = document.getElementById('csvText').value.trim();
+            if (!texto) {
+                mostrarMensaje(translations[document.getElementById('languageSelect').value].messages.pasteCsv, 'error');
+                return;
+            }
+
+            try {
+                const filas = parseCsvText(texto);
+                cargarDatos(filas);
+                mostrarMensaje(translations[document.getElementById('languageSelect').value].messages.importedCsv, 'success');
+            } catch (error) {
+                mostrarMensaje(error.message, 'error');
+            }
+        });
+
+        document.getElementById('csvFile').addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                const filas = parseCsvText(text);
+                cargarDatos(filas);
+                mostrarMensaje(translations[document.getElementById('languageSelect').value].messages.importedFile, 'success');
+            } catch (error) {
+                mostrarMensaje(error.message, 'error');
+            }
+        });
+
+        document.getElementById('excelFile').addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+                mostrarMensaje(translations[document.getElementById('languageSelect').value].messages.fileSize, 'error');
+                return;
+            }
+            try {
+                const formData = new FormData();
+                formData.append('archivo', file);
+                const response = await fetch('/api/importar-excel', { method: 'POST', body: formData });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'No se pudo importar el Excel.');
+                cargarDatos(result.datos);
+                mostrarMensaje(`${translations[document.getElementById('languageSelect').value].messages.importedExcel} (${result.filas} rows).`, 'success');
+            } catch (error) {
+                mostrarMensaje(error.message, 'error');
+            }
+        });
+
+        document.getElementById('generarReporte').addEventListener('click', async () => {
+            const titulo = document.getElementById('titulo').value.trim() || 'Reporte financiero';
+            const mes = document.getElementById('mes').value.trim() || 'Sin mes';
+            const formato = document.querySelector('input[name="formato"]:checked')?.value || 'excel';
+            const datos = recolectarDatos();
+
+            if (!datos.length) {
+                mostrarMensaje(translations[document.getElementById('languageSelect').value].messages.empty, 'error');
+                return;
+            }
+
+            const payload = {
+                formato,
+                titulo,
+                mes,
+                idioma: document.getElementById('languageSelect').value,
+                datos: datos.map((item) => ({
+                    ...item,
+                    monto: Number(item.monto)
+                }))
+            };
+
+            try {
+                mostrarMensaje(translations[document.getElementById('languageSelect').value].messages.generating, 'info');
+                const response = await fetch('/api/generar-reporte', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorBody = await response.json().catch(() => ({ error: 'No se pudo generar el reporte.' }));
+                    throw new Error(errorBody.error || 'No se pudo generar el reporte.');
+                }
+
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = tipo === 'pdf' ? 'financial-report.pdf' : 'financial-report.xlsx';
+                a.download = formato === 'pdf' ? 'financial-report.pdf' : 'financial-report.xlsx';
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
-            } else {
-                alert('Error generating the report.');
+                window.URL.revokeObjectURL(url);
+
+                mostrarMensaje(translations[document.getElementById('languageSelect').value].messages.generated, 'success');
+            } catch (error) {
+                mostrarMensaje(error.message || 'Ocurrió un error al generar el documento.', 'error');
             }
+        });
+
+        cargarDatos(datosEjemplo);
+
+        document.getElementById('themeToggle').addEventListener('change', (event) => {
+            document.body.classList.toggle('dark-mode', event.target.checked);
+            localStorage.setItem('reportflow-theme', event.target.checked ? 'dark' : 'light');
+        });
+        if (localStorage.getItem('reportflow-theme') === 'dark') {
+            document.getElementById('themeToggle').checked = true;
+            document.body.classList.add('dark-mode');
+        }
+
+        const translations = {
+            es: {
+                pageTitle: 'ReportFlow - Generador de reportes', eyebrow: 'Generador de reportes', darkMode: 'Modo oscuro', language: 'Idioma', split: 'Split 3',
+                reportData: 'Datos del reporte', fileRulesTitle: 'Reglas para importar archivos', fileRules: 'Acepta archivos .csv o .xlsx de hasta 5 MB. La primera fila debe tener: fecha, concepto, categoria y monto. Los montos deben ser números; una fila por transacción.',
+                title: 'Título', titlePlaceholder: 'Ej. Informe operativo mensual', month: 'Mes', monthPlaceholder: 'Ej. Septiembre 2026', outputFormat: 'Formato de salida', excel: 'Excel', pdf: 'PDF',
+                importCsv: 'Importar CSV', importExcel: 'Importar Excel (.xlsx)', pasteCsv: 'Pegar CSV', csvPlaceholder: 'fecha,concepto,categoria,monto\n01/09/2026,Venta de servicio,Income,45000',
+                loadExample: 'Cargar ejemplo', importCsvButton: 'Importar CSV', date: 'Fecha', concept: 'Concepto', category: 'Categoría', amount: 'Monto', actions: 'Acciones',
+                addRow: '+ Agregar fila', generateReport: 'Generar reporte', datePlaceholder: 'dd/mm/aaaa', conceptPlaceholder: 'Concepto', categoryPlaceholder: 'Categoría', amountPlaceholder: '0.00', deleteRow: 'Eliminar fila',
+                messages: { example: 'Ejemplo cargado.', pasteCsv: 'Pega o carga un CSV antes de importar.', importedCsv: 'CSV importado correctamente.', importedFile: 'Archivo CSV cargado correctamente.', importedExcel: 'Excel importado correctamente', generating: 'Generando documento...', generated: 'Reporte generado correctamente.', empty: 'Debes agregar al menos una fila con datos válidos.', fileSize: 'El archivo supera el límite de 5 MB.' }
+            },
+            en: {
+                pageTitle: 'ReportFlow - Report generator', eyebrow: 'Report generator', darkMode: 'Dark mode', language: 'Language', split: 'Split 3',
+                reportData: 'Report data', fileRulesTitle: 'File import rules', fileRules: 'Accepts .csv or .xlsx files up to 5 MB. The first row must contain: fecha, concepto, categoria and monto. Amounts must be numbers; one transaction per row.',
+                title: 'Title', titlePlaceholder: 'E.g. Monthly operational report', month: 'Month', monthPlaceholder: 'E.g. September 2026', outputFormat: 'Output format', excel: 'Excel', pdf: 'PDF',
+                importCsv: 'Import CSV', importExcel: 'Import Excel (.xlsx)', pasteCsv: 'Paste CSV', csvPlaceholder: 'fecha,concepto,categoria,monto\n09/01/2026,Service sale,Income,45000',
+                loadExample: 'Load example', importCsvButton: 'Import CSV', date: 'Date', concept: 'Concept', category: 'Category', amount: 'Amount', actions: 'Actions',
+                addRow: '+ Add row', generateReport: 'Generate report', datePlaceholder: 'mm/dd/yyyy', conceptPlaceholder: 'Concept', categoryPlaceholder: 'Category', amountPlaceholder: '0.00', deleteRow: 'Delete row',
+                messages: { example: 'Example loaded.', pasteCsv: 'Paste or load a CSV before importing.', importedCsv: 'CSV imported successfully.', importedFile: 'CSV file loaded successfully.', importedExcel: 'Excel imported successfully', generating: 'Generating document...', generated: 'Report generated successfully.', empty: 'Add at least one row with valid data.', fileSize: 'The file exceeds the 5 MB limit.' }
+            }
+        };
+        document.getElementById('languageSelect').addEventListener('change', (event) => {
+            const language = event.target.value;
+            applyLanguage(language);
+            localStorage.setItem('reportflow-language', language);
+        });
+        const savedLanguage = localStorage.getItem('reportflow-language');
+        if (savedLanguage) {
+            document.getElementById('languageSelect').value = savedLanguage;
+            document.getElementById('languageSelect').dispatchEvent(new Event('change'));
         }
     </script>
 </body>

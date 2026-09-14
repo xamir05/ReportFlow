@@ -5,12 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Financial Report</title>
     <link rel="stylesheet" href="reportTemplate.css">
+    <style>
+        .total-amount {
+            color: #004B87;
+        }
+    </style>
 </head>
 <body>
     <header>
         <div>
             <h1>{{titulo}}</h1>
-            <div class="subtitle">Period: {{mes}}</div>
+            <div class="subtitle">{{periodo}}: {{mes}}</div>
         </div>
         <div>
             <strong>ReportFlow Inc.</strong>
@@ -20,10 +25,10 @@
     <table>
         <thead>
             <tr>
-                <th>Date</th>
-                <th>Concept</th>
-                <th>Category</th>
-                <th>Amount</th>
+                <th>{{fecha}}</th>
+                <th>{{concepto}}</th>
+                <th>{{categoria}}</th>
+                <th>{{monto}}</th>
             </tr>
         </thead>
         <tbody>
@@ -32,7 +37,7 @@
     </table>
 
     <div class="total-section">
-        Net Total: <span style="color: #004B87;">{{totalNeto}}</span>
+        {{totalLabel}}: <span class="total-amount">{{totalNeto}}</span>
     </div>
 </body>
 </html>

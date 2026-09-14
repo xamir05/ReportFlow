@@ -1,8 +1,12 @@
 const ExcelJS = require('exceljs');
 
 async function generarExcel(datosReporte) {
+    const english = datosReporte.idioma === 'en';
+    const labels = english
+        ? { sheet: 'Financial Report', date: 'Date', concept: 'Concept', category: 'Category', amount: 'Amount', total: 'NET TOTAL:' }
+        : { sheet: 'Reporte Financiero', date: 'Fecha', concept: 'Concepto', category: 'Categoría', amount: 'Monto', total: 'TOTAL NETO:' };
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Reporte Financiero');
+    const worksheet = workbook.addWorksheet(labels.sheet);
 
     // 1. Título del reporte
     worksheet.mergeCells('A1:D1');
@@ -14,10 +18,10 @@ async function generarExcel(datosReporte) {
 
     // 2. Definir las columnas de la tabla
     worksheet.columns = [
-        { header: 'Fecha', key: 'fecha', width: 15 },
-        { header: 'Concepto', key: 'concepto', width: 35 },
-        { header: 'Categoría', key: 'categoria', width: 15 },
-        { header: 'Monto', key: 'monto', width: 20 }
+        { header: labels.date, key: 'fecha', width: 15 },
+        { header: labels.concept, key: 'concepto', width: 35 },
+        { header: labels.category, key: 'categoria', width: 15 },
+        { header: labels.amount, key: 'monto', width: 20 }
     ];
 
     // Espacio en blanco antes de los encabezados
@@ -59,7 +63,7 @@ async function generarExcel(datosReporte) {
 
     // 5. Agregar Fila de Totales con Fórmula
     const filaTotal = worksheet.addRow({
-        concepto: 'TOTAL NETO:',
+        concepto: labels.total,
     });
     filaTotal.font = { bold: true };
     
