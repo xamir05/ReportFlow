@@ -35,6 +35,7 @@ async function generarPDF(datosReporte) {
     }).format(sumaTotal);
 
     htmlTemplate = htmlTemplate
+        .replace('{{plantilla}}', datosReporte.plantilla || 'financiera')
         .replace('{{titulo}}', datosReporte.titulo)
         .replace('{{mes}}', datosReporte.mes)
         .replace('{{periodo}}', labels.period)

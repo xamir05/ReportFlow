@@ -23,7 +23,7 @@
                         <option value="en">EN</option>
                     </select>
                 </label>
-                <div class="status-pill" data-i18n="split">Split 3</div>
+                <div class="status-pill" data-i18n="split">Split 4</div>
             </div>
         </header>
 
@@ -50,6 +50,15 @@
                     <div class="format-options">
                         <label class="radio-option"><input type="radio" name="formato" value="excel" checked> <span data-i18n="excel">Excel</span></label>
                         <label class="radio-option"><input type="radio" name="formato" value="pdf"> <span data-i18n="pdf">PDF</span></label>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="plantilla" data-i18n="template">Plantilla</label>
+                        <select id="plantilla" class="full-select">
+                            <option value="financiera" data-i18n="financialTemplate">Financiera</option>
+                            <option value="operativa" data-i18n="operationalTemplate">Operativa</option>
+                            <option value="ejecutiva" data-i18n="executiveTemplate">Ejecutiva</option>
+                        </select>
                     </div>
                 </div>
 
@@ -87,6 +96,27 @@
                         <tbody id="tablaDatos"></tbody>
                     </table>
                 </div>
+
+                    <section class="summary-panel" aria-live="polite">
+                        <div class="summary-heading">
+                            <h3 data-i18n="previewTitle">Vista previa</h3>
+                            <span id="rowCount" class="summary-count">0 filas</span>
+                        </div>
+                        <div class="summary-grid">
+                            <article class="summary-card income-card">
+                                <span data-i18n="income">Ingresos</span>
+                                <strong id="incomeTotal">RD$ 0.00</strong>
+                            </article>
+                            <article class="summary-card expense-card">
+                                <span data-i18n="expenses">Gastos</span>
+                                <strong id="expenseTotal">RD$ 0.00</strong>
+                            </article>
+                            <article class="summary-card balance-card">
+                                <span data-i18n="balance">Balance neto</span>
+                                <strong id="balanceTotal">RD$ 0.00</strong>
+                            </article>
+                        </div>
+                    </section>
 
                 <div class="actions-row end">
                     <button type="button" class="ghost-button" id="agregarFila" data-i18n="addRow">+ Agregar fila</button>
@@ -150,6 +180,7 @@
             if (!rows.length) {
                 tablaDatos.appendChild(nuevaFila());
             }
+            actualizarResumen();
         }
 
         function applyLanguage(language) {
@@ -196,16 +227,51 @@
             }).filter((item) => item.fecha || item.concepto || item.categoria || item.monto !== 0);
         }
 
+        function actualizarResumen() {
+            const datos = recolectarDatos();
+            const language = document.getElementById('languageSelect').value;
+            const locale = language === 'en' ? 'en-US' : 'es-DO';
+            const currency = language === 'en' ? 'USD' : 'DOP';
+            const formatMoney = (value) => new Intl.NumberFormat(locale, { style: 'currency', currency }).format(value);
+            const income = datos.reduce((total, item) => total + (item.monto > 0 ? item.monto : 0), 0);
+            const expenses = datos.reduce((total, item) => total + (item.monto < 0 ? Math.abs(item.monto) : 0), 0);
+
+            document.getElementById('rowCount').textContent = `${datos.length} ${language === 'en' ? 'rows' : 'filas'}`;
+            document.getElementById('incomeTotal').textContent = formatMoney(income);
+            document.getElementById('expenseTotal').textContent = formatMoney(expenses);
+            document.getElementById('balanceTotal').textContent = formatMoney(income - expenses);
+        }
+
         function parseCsvText(texto) {
             const lineas = texto.split(/\r?\n/).filter((linea) => linea.trim());
             if (lineas.length < 2) throw new Error('El CSV debe incluir encabezados y al menos una fila de datos.');
 
-            const cabeceras = lineas[0].split(',').map((col) => col.trim().toLowerCase());
+            const separarCsv = (linea) => {
+                const columnas = [];
+                let actual = '';
+                let entreComillas = false;
+                for (const caracter of linea) {
+                    if (caracter === '"') entreComillas = !entreComillas;
+                    else if (caracter === ',' && !entreComillas) {
+                        columnas.push(actual.trim().replace(/^"|"$/g, ''));
+                        actual = '';
+                    } else actual += caracter;
+                }
+                columnas.push(actual.trim().replace(/^"|"$/g, ''));
+                return columnas;
+            };
+            const cabeceras = separarCsv(lineas[0]).map((col) => col.toLowerCase());
+            const aliases = {
+                fecha: ['fecha', 'date', 'transaction date'],
+                concepto: ['concepto', 'concept', 'description', 'descripcion'],
+                categoria: ['categoria', 'categoría', 'category'],
+                monto: ['monto', 'amount', 'importe', 'value', 'total']
+            };
             const indice = {
-                fecha: cabeceras.indexOf('fecha'),
-                concepto: cabeceras.indexOf('concepto'),
-                categoria: cabeceras.indexOf('categoria'),
-                monto: cabeceras.indexOf('monto')
+                fecha: cabeceras.findIndex((header) => aliases.fecha.includes(header)),
+                concepto: cabeceras.findIndex((header) => aliases.concepto.includes(header)),
+                categoria: cabeceras.findIndex((header) => aliases.categoria.includes(header)),
+                monto: cabeceras.findIndex((header) => aliases.monto.includes(header))
             };
 
             if (Object.values(indice).some((value) => value === -1)) {
@@ -213,7 +279,7 @@
             }
 
             const filas = lineas.slice(1).map((linea) => {
-                const columnas = linea.split(',');
+                const columnas = separarCsv(linea);
                 return {
                     fecha: (columnas[indice.fecha] || '').trim().replace(/^"|"$/g, ''),
                     concepto: (columnas[indice.concepto] || '').trim().replace(/^"|"$/g, ''),
@@ -228,10 +294,18 @@
 
         document.getElementById('agregarFila').addEventListener('click', () => {
             tablaDatos.appendChild(nuevaFila());
+            actualizarResumen();
+        });
+
+        tablaDatos.addEventListener('input', (event) => {
+            if (event.target.matches('input[data-field]')) {
+                actualizarResumen();
+            }
         });
 
         document.getElementById('cargarEjemplo').addEventListener('click', () => {
             cargarDatos(datosEjemplo);
+            actualizarResumen();
             mostrarMensaje(translations[document.getElementById('languageSelect').value].messages.example, 'success');
         });
 
@@ -301,6 +375,7 @@
                 titulo,
                 mes,
                 idioma: document.getElementById('languageSelect').value,
+                plantilla: document.getElementById('plantilla').value,
                 datos: datos.map((item) => ({
                     ...item,
                     monto: Number(item.monto)
@@ -349,27 +424,30 @@
 
         const translations = {
             es: {
-                pageTitle: 'ReportFlow - Generador de reportes', eyebrow: 'Generador de reportes', darkMode: 'Modo oscuro', language: 'Idioma', split: 'Split 3',
+                pageTitle: 'ReportFlow - Generador de reportes', eyebrow: 'Generador de reportes', darkMode: 'Modo oscuro', language: 'Idioma', split: 'Split 4',
                 reportData: 'Datos del reporte', fileRulesTitle: 'Reglas para importar archivos', fileRules: 'Acepta archivos .csv o .xlsx de hasta 5 MB. La primera fila debe tener: fecha, concepto, categoria y monto. Los montos deben ser números; una fila por transacción.',
-                title: 'Título', titlePlaceholder: 'Ej. Informe operativo mensual', month: 'Mes', monthPlaceholder: 'Ej. Septiembre 2026', outputFormat: 'Formato de salida', excel: 'Excel', pdf: 'PDF',
+                title: 'Título', titlePlaceholder: 'Ej. Informe operativo mensual', month: 'Mes', monthPlaceholder: 'Ej. Septiembre 2026', outputFormat: 'Formato de salida', excel: 'Excel', pdf: 'PDF', template: 'Plantilla', financialTemplate: 'Financiera', operationalTemplate: 'Operativa', executiveTemplate: 'Ejecutiva',
                 importCsv: 'Importar CSV', importExcel: 'Importar Excel (.xlsx)', pasteCsv: 'Pegar CSV', csvPlaceholder: 'fecha,concepto,categoria,monto\n01/09/2026,Venta de servicio,Income,45000',
                 loadExample: 'Cargar ejemplo', importCsvButton: 'Importar CSV', date: 'Fecha', concept: 'Concepto', category: 'Categoría', amount: 'Monto', actions: 'Acciones',
                 addRow: '+ Agregar fila', generateReport: 'Generar reporte', datePlaceholder: 'dd/mm/aaaa', conceptPlaceholder: 'Concepto', categoryPlaceholder: 'Categoría', amountPlaceholder: '0.00', deleteRow: 'Eliminar fila',
+                previewTitle: 'Vista previa', income: 'Ingresos', expenses: 'Gastos', balance: 'Balance neto',
                 messages: { example: 'Ejemplo cargado.', pasteCsv: 'Pega o carga un CSV antes de importar.', importedCsv: 'CSV importado correctamente.', importedFile: 'Archivo CSV cargado correctamente.', importedExcel: 'Excel importado correctamente', generating: 'Generando documento...', generated: 'Reporte generado correctamente.', empty: 'Debes agregar al menos una fila con datos válidos.', fileSize: 'El archivo supera el límite de 5 MB.' }
             },
             en: {
-                pageTitle: 'ReportFlow - Report generator', eyebrow: 'Report generator', darkMode: 'Dark mode', language: 'Language', split: 'Split 3',
+                pageTitle: 'ReportFlow - Report generator', eyebrow: 'Report generator', darkMode: 'Dark mode', language: 'Language', split: 'Split 4',
                 reportData: 'Report data', fileRulesTitle: 'File import rules', fileRules: 'Accepts .csv or .xlsx files up to 5 MB. The first row must contain: fecha, concepto, categoria and monto. Amounts must be numbers; one transaction per row.',
-                title: 'Title', titlePlaceholder: 'E.g. Monthly operational report', month: 'Month', monthPlaceholder: 'E.g. September 2026', outputFormat: 'Output format', excel: 'Excel', pdf: 'PDF',
+                title: 'Title', titlePlaceholder: 'E.g. Monthly operational report', month: 'Month', monthPlaceholder: 'E.g. September 2026', outputFormat: 'Output format', excel: 'Excel', pdf: 'PDF', template: 'Template', financialTemplate: 'Financial', operationalTemplate: 'Operational', executiveTemplate: 'Executive',
                 importCsv: 'Import CSV', importExcel: 'Import Excel (.xlsx)', pasteCsv: 'Paste CSV', csvPlaceholder: 'fecha,concepto,categoria,monto\n09/01/2026,Service sale,Income,45000',
                 loadExample: 'Load example', importCsvButton: 'Import CSV', date: 'Date', concept: 'Concept', category: 'Category', amount: 'Amount', actions: 'Actions',
                 addRow: '+ Add row', generateReport: 'Generate report', datePlaceholder: 'mm/dd/yyyy', conceptPlaceholder: 'Concept', categoryPlaceholder: 'Category', amountPlaceholder: '0.00', deleteRow: 'Delete row',
+                previewTitle: 'Preview', income: 'Income', expenses: 'Expenses', balance: 'Net balance',
                 messages: { example: 'Example loaded.', pasteCsv: 'Paste or load a CSV before importing.', importedCsv: 'CSV imported successfully.', importedFile: 'CSV file loaded successfully.', importedExcel: 'Excel imported successfully', generating: 'Generating document...', generated: 'Report generated successfully.', empty: 'Add at least one row with valid data.', fileSize: 'The file exceeds the 5 MB limit.' }
             }
         };
         document.getElementById('languageSelect').addEventListener('change', (event) => {
             const language = event.target.value;
             applyLanguage(language);
+            actualizarResumen();
             localStorage.setItem('reportflow-language', language);
         });
         const savedLanguage = localStorage.getItem('reportflow-language');

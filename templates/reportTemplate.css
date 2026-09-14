@@ -18,6 +18,24 @@ h1 {
     font-size: 24px; 
 }
 
+body.template-operativa h1,
+body.template-operativa th {
+    color: #177e89;
+}
+
+body.template-operativa th {
+    background-color: #177e89;
+}
+
+body.template-ejecutiva h1,
+body.template-ejecutiva th {
+    color: #6c4ab6;
+}
+
+body.template-ejecutiva th {
+    background-color: #6c4ab6;
+}
+
 .subtitle { 
     color: #666; 
     font-size: 14px; 

@@ -20,6 +20,23 @@ function normalizarDatos(datos) {
     });
 }
 
+function buscarEncabezados(worksheet, aliases) {
+    for (let rowNumber = 1; rowNumber <= Math.min(10, worksheet.rowCount); rowNumber++) {
+        const headers = [];
+        worksheet.getRow(rowNumber).eachCell((cell, columnNumber) => {
+            headers[columnNumber - 1] = String(cell.value ?? '').trim().toLowerCase();
+        });
+        const indexes = {};
+        Object.entries(aliases).forEach(([key, names]) => {
+            indexes[key] = headers.findIndex((header) => names.includes(header));
+        });
+        if (!Object.values(indexes).some((index) => index === -1)) {
+            return { rowNumber, indexes };
+        }
+    }
+    return null;
+}
+
 router.post('/generar-reporte', async (req, res) => {
     try {
         const { formato, idioma = 'es', ...datosReporte } = req.body || {};
@@ -37,6 +54,9 @@ router.post('/generar-reporte', async (req, res) => {
             ...datosReporte,
             datos: datosNormalizados,
             idioma: idioma === 'en' ? 'en' : 'es',
+            plantilla: ['financiera', 'operativa', 'ejecutiva'].includes(datosReporte.plantilla)
+                ? datosReporte.plantilla
+                : 'financiera',
             titulo: String(datosReporte.titulo ?? 'Reporte financiero').trim() || 'Reporte financiero',
             mes: String(datosReporte.mes ?? 'Sin mes').trim() || 'Sin mes'
         };
@@ -77,31 +97,24 @@ router.post('/importar-excel', upload.single('archivo'), async (req, res) => {
             return res.status(400).json({ error: 'El archivo Excel no contiene ninguna hoja.' });
         }
 
-        const headers = [];
-        worksheet.getRow(1).eachCell((cell, columnNumber) => {
-            headers[columnNumber - 1] = String(cell.value ?? '').trim().toLowerCase();
-        });
-
         const aliases = {
-            fecha: ['fecha', 'date'],
-            concepto: ['concepto', 'concept', 'description'],
+            fecha: ['fecha', 'date', 'transaction date'],
+            concepto: ['concepto', 'concept', 'description', 'descripcion', 'description/merchant'],
             categoria: ['categoria', 'categoría', 'category'],
-            monto: ['monto', 'amount', 'importe']
+            monto: ['monto', 'amount', 'importe', 'value', 'total']
         };
-        const indexes = {};
-        Object.entries(aliases).forEach(([key, names]) => {
-            indexes[key] = headers.findIndex((header) => names.includes(header));
-        });
+        const headerInfo = buscarEncabezados(worksheet, aliases);
 
-        if (Object.values(indexes).some((index) => index === -1)) {
+        if (!headerInfo) {
             return res.status(400).json({
-                error: 'La primera fila debe incluir columnas: fecha, concepto, categoria y monto.'
+                error: 'No se encontraron columnas compatibles: fecha, concepto, categoria y monto.'
             });
         }
+        const { rowNumber: headerRowNumber, indexes } = headerInfo;
 
         const datos = [];
         worksheet.eachRow((row, rowNumber) => {
-            if (rowNumber === 1) return;
+            if (rowNumber <= headerRowNumber) return;
             const value = (key) => row.getCell(indexes[key] + 1).value;
             const fecha = value('fecha') instanceof Date
                 ? value('fecha').toLocaleDateString('es-DO')

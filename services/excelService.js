@@ -7,13 +7,19 @@ async function generarExcel(datosReporte) {
         : { sheet: 'Reporte Financiero', date: 'Fecha', concept: 'Concepto', category: 'Categoría', amount: 'Monto', total: 'TOTAL NETO:' };
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(labels.sheet);
+    const templateColors = {
+        financiera: 'FF004B87',
+        operativa: 'FF177E89',
+        ejecutiva: 'FF6C4AB6'
+    };
+    const templateColor = templateColors[datosReporte.plantilla] || templateColors.financiera;
 
     // 1. Título del reporte
     worksheet.mergeCells('A1:D1');
     const titulo = worksheet.getCell('A1');
     titulo.value = `${datosReporte.titulo} - ${datosReporte.mes}`;
     titulo.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
-    titulo.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF004B87' } }; // Azul oscuro
+    titulo.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: templateColor } };
     titulo.alignment = { horizontal: 'center' };
 
     // 2. Definir las columnas de la tabla
@@ -30,7 +36,7 @@ async function generarExcel(datosReporte) {
     // Estilos para la fila de encabezados (Fila 3)
     const headerRow = worksheet.getRow(3);
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2F75B5' } }; // Azul claro
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: templateColor } };
     
     // 3. Agregar los datos iterando el array
     datosReporte.datos.forEach((item) => {

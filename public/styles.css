@@ -228,6 +228,19 @@ input[type='file'] {
     color: var(--muted);
 }
 
+.full-select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #cfe0ef;
+    border-radius: 10px;
+    background: var(--panel);
+    color: var(--text);
+}
+
+body.dark-mode .full-select {
+    border-color: #38536b;
+}
+
 textarea {
     min-height: 110px;
     resize: vertical;
@@ -305,6 +318,72 @@ button:hover {
     background: #fbfdff;
 }
 
+.summary-panel {
+    margin-top: 24px;
+    padding: 18px;
+    border: 1px solid #d7e4f5;
+    border-radius: 14px;
+    background: var(--panel-alt);
+}
+
+.summary-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.summary-heading h3 {
+    margin: 0;
+    color: var(--primary);
+    font-size: 1.05rem;
+}
+
+.summary-count {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.summary-card {
+    display: grid;
+    gap: 8px;
+    padding: 15px;
+    border-radius: 11px;
+    background: var(--panel);
+    border-left: 4px solid var(--primary);
+    box-shadow: 0 5px 14px var(--shadow);
+}
+
+.summary-card span {
+    color: var(--muted);
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.summary-card strong {
+    color: var(--text);
+    font-size: 1.15rem;
+}
+
+.income-card {
+    border-left-color: #1bb38d;
+}
+
+.expense-card {
+    border-left-color: var(--danger);
+}
+
+.balance-card {
+    border-left-color: var(--primary);
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -346,6 +425,10 @@ body.dark-mode th {
 
 body.dark-mode td,
 body.dark-mode th {
+    border-color: #38536b;
+}
+
+body.dark-mode .summary-panel {
     border-color: #38536b;
 }
 
@@ -413,5 +496,9 @@ td input {
     .secondary-button,
     .ghost-button {
         width: 100%;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
     }
 }
